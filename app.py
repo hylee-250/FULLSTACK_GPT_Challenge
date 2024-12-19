@@ -69,20 +69,17 @@ with st.sidebar:
         "Upload a .txt file",
         type=["txt"],
         )
-try:
-    llm = ChatOpenAI(
-        temperature=0.1,
-        api_key=my_api_key,
-    )
 
-    memory = ConversationBufferMemory(
-    llm=llm,
-    max_token_limit=20,
-    return_messages=True,
-    )
-except:
-    pass
+llm = ChatOpenAI(
+    temperature=0.1,
+    api_key=my_api_key,
+)
 
+memory = ConversationBufferMemory(
+llm=llm,
+max_token_limit=20,
+return_messages=True,
+)
 
 def load_memory(_):
     return memory.load_memory_variables({})["history"]
@@ -98,28 +95,25 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-try:
-    if file:
-        retriever = embed_file(file)
-        send_message("I'm ready! Ask away!", "ai", save=False)
-        paint_history()
-        message = st.chat_input("Ask anything about your file...")
-        if message:
-            send_message(message, "human")
-            chain = (
-            {
-                "context": retriever | RunnableLambda(format_docs),
-                "question": RunnablePassthrough(),
-                "history": load_memory,
-            }
-            | prompt
-            | llm
-            )
-            response = chain.invoke(message)
-            send_message(response.content, "ai")
 
-    else:
-        st.session_state["messages"] = []
-except:
-    st.error("Enter your OpenAI Key First!")
-    pass
+if file:
+    retriever = embed_file(file)
+    send_message("I'm ready! Ask away!", "ai", save=False)
+    paint_history()
+    message = st.chat_input("Ask anything about your file...")
+    if message:
+        send_message(message, "human")
+        chain = (
+        {
+            "context": retriever | RunnableLambda(format_docs),
+            "question": RunnablePassthrough(),
+            "history": load_memory,
+        }
+        | prompt
+        | llm
+        )
+        response = chain.invoke(message)
+        send_message(response.content, "ai")
+
+else:
+    st.session_state["messages"] = []
