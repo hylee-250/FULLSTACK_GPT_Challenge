@@ -1,3 +1,4 @@
+import os
 from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import TextLoader
@@ -64,7 +65,8 @@ First Enter your OpenAI API Key!
 )
 with st.sidebar:
     my_api_key= st.text_input("Enter your OpenAI API Key",type="password")
-    
+    os.environ["OPENAI_API_KEY"] = my_api_key
+
     file = st.file_uploader(
         "Upload a .txt file",
         type=["txt"],
