@@ -64,8 +64,10 @@ First Enter your OpenAI API Key!
 """
 )
 with st.sidebar:
-    my_api_key= st.text_input("Enter your OpenAI API Key",type="password")
-    os.environ["OPENAI_API_KEY"] = my_api_key
+    if "OPENAI_API_KEY" not in os.environ:
+        my_api_key= st.text_input("Enter your OpenAI API Key",type="password")
+    else:
+        my_api_key = os.environ["OPENAI_API_KEY"]
 
     file = st.file_uploader(
         "Upload a .txt file",
@@ -74,7 +76,7 @@ with st.sidebar:
 
 llm = ChatOpenAI(
     temperature=0.1,
-    api_key=my_api_key,
+    open_api_key=my_api_key,
 )
 
 memory = ConversationBufferMemory(
