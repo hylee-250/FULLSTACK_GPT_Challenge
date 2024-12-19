@@ -74,7 +74,7 @@ with st.sidebar:
 
 llm = ChatOpenAI(
     temperature=0.1,
-    openai_api_key=my_api_key,
+    api_key=my_api_key,
 )
 
 memory = ConversationBufferMemory(
