@@ -1,3 +1,4 @@
+import os
 from langchain.prompts import ChatPromptTemplate
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import UnstructuredFileLoader
@@ -11,6 +12,12 @@ from langchain.memory import ConversationBufferMemory
 from langchain.callbacks.base import BaseCallbackHandler
 import streamlit as st
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
+api_key = os.getenv("OPENAI_API_KEY")
+
 
 class ChatCallbackHandler(BaseCallbackHandler):
     message = ""
@@ -26,7 +33,11 @@ class ChatCallbackHandler(BaseCallbackHandler):
         self.message_box.markdown(self.message)
 
 
-@ st.cache_resource(show_spinner="Embedding file...")
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
+
+
+@st.cache_resource(show_spinner="Embedding file...")
 def embed_file(file):
     file_content = file.read()
     file_path = f"./.cache/files/{file.name}"
@@ -43,13 +54,11 @@ def embed_file(file):
     )
     loader = UnstructuredFileLoader(file_path)
     docs = loader.load_and_split(text_splitter=splitter)
-    embeddings = OpenAIEmbeddings(
-        openai_api_key=my_api_key
-    )
+    embeddings = OpenAIEmbeddings(openai_api_key=my_api_key)
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
     vectorstore = FAISS.from_documents(docs, cached_embeddings)
     retriever = vectorstore.as_retriever()
-    
+
     return retriever
 
 
@@ -61,15 +70,13 @@ def send_message(message, role, save=True):
     with st.chat_message(role):
         st.markdown(message)
     if save:
-        save_message(message,role)
+        save_message(message, role)
+
 
 def paint_history():
     for message in st.session_state["messages"]:
-        send_message(
-            message["message"],
-            message["role"],
-            save=False
-        )
+        send_message(message["message"], message["role"], save=False)
+
 
 def format_docs(docs):
     return "\n\n".join(document.page_content for document in docs)
@@ -85,33 +92,23 @@ prompt = ChatPromptTemplate.from_messages(
             Context:{context}
             """,
         ),
-        MessagesPlaceholder(variable_name="history"),
         ("human", "{question}"),
     ]
 )
+
 
 def main():
     if not my_api_key:
         return
 
     llm = ChatOpenAI(
-    temperature=0.1,
-    streaming=True,
-    open_api_key=my_api_key,
-    callbacks=[
+        temperature=0.1,
+        streaming=True,
+        api_key=my_api_key,
+        callbacks=[
             ChatCallbackHandler(),
         ],
     )
-
-    memory = ConversationBufferMemory(
-        llm=llm,
-        max_token_limit=20,
-        return_messages=True,
-    )
-
-    def load_memory(_):
-        return memory.load_memory_variables({})["history"]
-
 
     if file:
         retriever = embed_file(file)
@@ -121,21 +118,19 @@ def main():
         if message:
             send_message(message, "human")
             chain = (
-            {
-                "context": retriever | RunnableLambda(format_docs),
-                "question": RunnablePassthrough(),
-                "history": load_memory,
-            }
-            | prompt
-            | llm
+                {
+                    "context": retriever | RunnableLambda(format_docs),
+                    "question": RunnablePassthrough(),
+                }
+                | prompt
+                | llm
             )
-            response = chain.invoke(message)
-            send_message(response.content, "ai")
+            with st.chat_message("ai"):
+                chain.invoke(message)
 
     else:
         st.session_state["messages"] = []
         return
-
 
 
 st.title("DocumentGPT Challenge")
@@ -155,11 +150,11 @@ Use this chatbot to ask questions to an AI about your files!
 
 
 with st.sidebar:
-    my_api_key= st.text_input("Enter your OpenAI API Key",type="password")
+    my_api_key = st.text_input("Enter your OpenAI API Key", type="password")
 
     file = st.file_uploader(
-    "Upload a .txt .pdf of .dock file",
-    type=["pdf","txt","docx"],
+        "Upload a .txt .pdf of .dock file",
+        type=["pdf", "txt", "docx"],
     )
 
 
@@ -168,7 +163,3 @@ try:
 except Exception as e:
     st.error("Check you OpenAI API Key or File")
     st.write(e)
-
-    
-
-
